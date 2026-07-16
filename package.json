@@ -1,0 +1,30 @@
+{
+  "name": "pbf-scout-community",
+  "version": "0.1.0",
+  "description": "A privacy-first MentraOS card scouting reference app with user-owned providers.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/**/*.test.ts src/*.test.ts",
+    "audit": "bash scripts/prepush-audit.sh",
+    "check": "npm run typecheck && npm test && npm run audit"
+  },
+  "dependencies": {
+    "@mentra/sdk": "2.1.29",
+    "dotenv": "^16.4.7"
+  },
+  "overrides": {
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
+  }
+}

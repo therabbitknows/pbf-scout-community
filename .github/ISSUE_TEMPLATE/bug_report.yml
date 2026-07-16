@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible community-edition problem without private data.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, webhook URLs, captures, transcripts, or private inventory.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Node, Mentra SDK, and device versions
+    validations:
+      required: true
