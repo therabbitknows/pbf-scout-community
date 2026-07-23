@@ -12,6 +12,8 @@ datasets, provider credentials, or operator infrastructure.
 ## What Works
 
 - `Scout this card` performs one explicit Mentra camera capture.
+- The PBF Scout Rabbit Creation can trigger that same capture through an
+  authenticated `/v1/rabbit/command` route with `capture_source=mentra`.
 - OpenAI-compatible vision provider support, including self-hosted gateways.
 - Duplicate final-transcript suppression while a turn is active.
 - User-owned Discord webhook with a separate 30-second confirmation.
@@ -84,6 +86,22 @@ Copy `examples/inventory.example.json` outside the repository, replace it with
 your records, and set `SCOUT_INVENTORY_PATH`. Search with `Search my inventory
 for ...`. The adapter is read-only and returns only records where `available`
 is not false.
+
+## Rabbit R1 integration
+
+The companion R1 Creation is a thin control surface. It never receives a
+Mentra frame and it never gets the MentraOS API key. Configure a dedicated
+`PBF_R1_BRIDGE_TOKEN` on this server, then enter this app's public HTTPS URL
+plus that token in the Creation's **Mentra Live camera** setup fields. A request
+must identify itself as `action=scout` and `capture_source=mentra`; the server
+resolves the single active MentraOS session, requests one photo, runs the same
+vision provider, and returns a short result for the R1. Concurrent duplicate
+requests share one in-flight operation and completed request IDs are cached for
+ten minutes.
+
+The route is intentionally narrow: it does not accept raw images, arbitrary
+commands, chat/task execution, or Discord writes. Keep Hermes task routing in
+the separate Hermes bridge and use HTTPS with a dedicated token.
 
 ## Security and Privacy
 
