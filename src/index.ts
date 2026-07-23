@@ -8,6 +8,7 @@ import {
   normalizeBridgeText,
   readBearer,
   validateRabbitScoutCommand,
+  type ValidatedRabbitCommand,
   type RabbitScoutCommand,
   type RabbitScoutResponse,
 } from "./rabbit-bridge.js";
@@ -21,6 +22,7 @@ const INVENTORY_PATH = process.env.SCOUT_INVENTORY_PATH?.trim() || "";
 const R1_BRIDGE_TOKEN = process.env.PBF_R1_BRIDGE_TOKEN?.trim() || "";
 const R1_ALLOWED_ORIGIN = process.env.PBF_R1_ALLOWED_ORIGIN?.trim() || "*";
 const R1_MENTRA_USER_ID = process.env.PBF_R1_MENTRA_USER_ID?.trim() || "";
+const APP_VERSION = "0.1.0";
 
 const visionBaseUrl = process.env.SCOUT_VISION_BASE_URL?.trim() || "";
 const visionModel = process.env.SCOUT_VISION_MODEL?.trim() || "";
@@ -43,6 +45,11 @@ type SessionState = {
   publishExpiresAt?: number;
   lastTranscript?: string;
   lastTranscriptAt?: number;
+  transcriptWaiter?: {
+    resolve: (text: string) => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  };
   present: (message: string) => Promise<void>;
 };
 
@@ -67,6 +74,31 @@ class ScoutCommunityApp extends AppServer {
 
   private configureRabbitBridge(): void {
     const expressApp = this.getExpressApp();
+    expressApp.get("/healthz", (_req: RabbitRequest, res: RabbitResponse) => {
+      res.status(200).json({
+        ok: true,
+        service: "pbf-scout-community",
+        version: APP_VERSION,
+        active_sessions: this.states.size,
+      });
+    });
+    expressApp.get("/readyz", (_req: RabbitRequest, res: RabbitResponse) => {
+      const missing = [
+        !PACKAGE_NAME && "MENTRAOS_PACKAGE_NAME",
+        !API_KEY && "MENTRAOS_API_KEY",
+        !vision && "SCOUT_VISION_BASE_URL/SCOUT_VISION_MODEL",
+      ].filter((value): value is string => Boolean(value));
+      res.status(missing.length ? 503 : 200).json({
+        ok: missing.length === 0,
+        service: "pbf-scout-community",
+        missing,
+        connectors: {
+          vision: Boolean(vision),
+          discord: Boolean(DISCORD_WEBHOOK),
+          rabbit_bridge: Boolean(R1_BRIDGE_TOKEN),
+        },
+      });
+    });
     const setCors = (res: RabbitResponse): void => {
       res.setHeader("Access-Control-Allow-Origin", R1_ALLOWED_ORIGIN);
       res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key");
@@ -105,7 +137,7 @@ class ScoutCommunityApp extends AppServer {
       this.commandResults.delete(validation.requestId);
 
       const existing = this.commandPromises.get(validation.requestId);
-      const work = existing || this.runRabbitScout(validation.requestId, validation.text, validation.sessionId);
+      const work = existing || this.runRabbitCommand(validation);
       if (!existing) this.commandPromises.set(validation.requestId, work);
 
       let response: RabbitScoutResponse;
@@ -119,8 +151,55 @@ class ScoutCommunityApp extends AppServer {
     });
   }
 
+  private async runRabbitCommand(command: ValidatedRabbitCommand): Promise<RabbitScoutResponse> {
+    if (command.action === "scout") {
+      return this.runRabbitScout(command.requestId, command.text, command.sessionId);
+    }
+    const state = this.findSession(command.sessionId);
+    if (!state) {
+      return {
+        ok: false,
+        error: this.states.size > 1 ? "multiple Mentra sessions are active; configure a session_id or PBF_R1_MENTRA_USER_ID" : "no active Mentra Live session",
+        retryable: true,
+      };
+    }
+    if (command.action === "speak") {
+      await state.present(command.text);
+      return { ok: true, action: "speak", text: "Spoken through Mentra Live." };
+    }
+    if (state.transcriptWaiter) {
+      return { ok: false, action: "listen_once", error: "Mentra voice capture is already waiting for speech", retryable: true };
+    }
+    try {
+      const transcript = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          if (state.transcriptWaiter) state.transcriptWaiter = undefined;
+          reject(new Error("Mentra voice capture timed out"));
+        }, command.timeoutMs ?? 15_000);
+        state.transcriptWaiter = { resolve, reject, timer };
+      });
+      // Keep the listening phase silent. Speaking through the same glasses
+      // that provide the microphone can feed the status prompt back into STT.
+      return { ok: true, action: "listen_once", text: transcript };
+    } catch (error) {
+      this.clearTranscriptWaiter(state);
+      return { ok: false, action: "listen_once", error: error instanceof Error ? error.message : "Mentra voice capture failed", retryable: true };
+    }
+  }
+
+  private clearTranscriptWaiter(state: SessionState, error?: Error): void {
+    const waiter = state.transcriptWaiter;
+    if (!waiter) return;
+    state.transcriptWaiter = undefined;
+    clearTimeout(waiter.timer);
+    if (error) waiter.reject(error);
+  }
+
   private findSession(sessionId?: string): SessionState | undefined {
-    if (sessionId) return this.states.get(sessionId);
+    if (sessionId) {
+      const state = this.states.get(sessionId);
+      return state && (!R1_MENTRA_USER_ID || state.userId === R1_MENTRA_USER_ID) ? state : undefined;
+    }
     const candidates = [...this.states.values()].filter((state) => !R1_MENTRA_USER_ID || state.userId === R1_MENTRA_USER_ID);
     return candidates.length === 1 ? candidates[0] : undefined;
   }
@@ -198,6 +277,13 @@ class ScoutCommunityApp extends AppServer {
       const text = raw.replace(/\s+/g, " ").trim().slice(0, 300);
       const now = Date.now();
       if (!text) return;
+      if (state.transcriptWaiter) {
+        const waiter = state.transcriptWaiter;
+        state.transcriptWaiter = undefined;
+        clearTimeout(waiter.timer);
+        waiter.resolve(text);
+        return;
+      }
       if (state.lastTranscript === text && now - (state.lastTranscriptAt || 0) < 4_000) return;
       state.lastTranscript = text;
       state.lastTranscriptAt = now;
@@ -259,7 +345,14 @@ class ScoutCommunityApp extends AppServer {
   }
 
   protected async onStop(sessionId: string): Promise<void> {
-    this.states.get(sessionId)?.cleanup();
+    const state = this.states.get(sessionId);
+    state?.cleanup();
+    if (state?.transcriptWaiter) {
+      const waiter = state.transcriptWaiter;
+      state.transcriptWaiter = undefined;
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("Mentra Live session ended while listening"));
+    }
     this.states.delete(sessionId);
   }
 }

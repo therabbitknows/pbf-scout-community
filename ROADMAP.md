@@ -10,6 +10,8 @@ accounts or hidden services.
 - Improve speech-recognition aliases while preserving explicit capture intent.
 - Add read-only inventory adapters using the generic `InventoryItem` contract.
 - Add a local setup validator that reports enabled destinations without secrets.
+- Add provider-specific quality fixtures for non-card collectibles without
+  retaining submitted frames.
 
 ## Planned
 

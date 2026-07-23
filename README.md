@@ -14,6 +14,9 @@ datasets, provider credentials, or operator infrastructure.
 - `Scout this card` performs one explicit Mentra camera capture.
 - The PBF Scout Rabbit Creation can trigger that same capture through an
   authenticated `/v1/rabbit/command` route with `capture_source=mentra`.
+- The Rabbit Creation can run an explicit `GLASS VOICE` flow: one Mentra final
+  transcription is sent to the selected Hermes/Ollama route and the answer is
+  spoken through Mentra Live.
 - OpenAI-compatible vision provider support, including self-hosted gateways.
 - Duplicate final-transcript suppression while a turn is active.
 - User-owned Discord webhook with a separate 30-second confirmation.
@@ -51,6 +54,34 @@ npm run dev
 
 Configure your Mentra app's public URL according to the official
 [MentraOS deployment guide](https://docs.mentraglass.com/app-devs/getting-started/deployment/overview).
+
+The server exposes two metadata-only operational endpoints: `GET /healthz`
+confirms the process is alive, while `GET /readyz` reports whether Mentra and
+the vision provider are configured. Neither endpoint returns credentials,
+frames, transcripts, model answers, or webhook URLs.
+
+### Railway deployment
+
+MentraOS Cloud must reach the AppServer over HTTPS and the AppServer maintains
+long-lived session connections, so deploy this as a persistent Node service.
+Railway is the supported reference deployment in this repository:
+
+```bash
+railway login
+railway init
+railway up
+```
+
+Set the variables from `.env.example` in the Railway service settings. Do not
+put `MENTRAOS_API_KEY`, `SCOUT_VISION_API_KEY`, Discord webhooks, or bridge
+tokens in git or in a client-side app. Set the Mentra Developer Console's App
+Server URL to the Railway HTTPS domain with no trailing slash, and enable the
+`CAMERA` and `MICROPHONE` permissions with user-facing rationales.
+
+After deployment, verify `/healthz` and `/readyz` before launching the app in
+Mentra. A healthy process is not necessarily ready: `/readyz` must show
+`"ok":true`, and the Mentra app must still be started to create an active
+session.
 
 ## Provider Setup
 
@@ -102,6 +133,13 @@ ten minutes.
 The route is intentionally narrow: it does not accept raw images, arbitrary
 commands, chat/task execution, or Discord writes. Keep Hermes task routing in
 the separate Hermes bridge and use HTTPS with a dedicated token.
+
+For the voice POC, the same authenticated route also accepts `listen_once` and
+`speak`. `listen_once` waits for one final Mentra transcription with a bounded
+timeout; `speak` calls the active session's MentraOS TTS. The R1 Creation chains
+those calls with its existing Hermes chat bridge. See
+[`docs/R1_MENTRA_VOICE_BRIDGE.md`](docs/R1_MENTRA_VOICE_BRIDGE.md). The R1
+never receives raw Mentra PCM and cannot host the native Mentra Bluetooth SDK.
 
 ## Security and Privacy
 
