@@ -83,6 +83,17 @@ Mentra. A healthy process is not necessarily ready: `/readyz` must show
 `"ok":true`, and the Mentra app must still be started to create an active
 session.
 
+The maintained reference deployment is:
+
+```text
+https://pbf-scout-community-production.up.railway.app
+```
+
+It currently serves `/healthz` successfully but intentionally remains
+`/readyz`-blocked until the operator supplies a vision provider. This keeps a
+public community deployment from spending the maintainer's private model
+quota.
+
 ## Provider Setup
 
 The vision adapter uses the OpenAI-compatible `/chat/completions` shape with a
@@ -96,6 +107,21 @@ SCOUT_VISION_API_KEY=
 
 A local endpoint must be reachable from the AppServer process. MentraOS Cloud
 cannot call a loopback service running on a different machine.
+
+For a hosted user-owned Ollama Cloud provider, Ollama documents the
+OpenAI-compatible base URL as `https://ollama.com/v1`. Create an Ollama API key
+in the user's account, choose a currently listed vision-capable model, and set:
+
+```text
+SCOUT_VISION_BASE_URL=https://ollama.com/v1
+SCOUT_VISION_MODEL=<vision-model-from-the-Ollama-model-library>
+SCOUT_VISION_API_KEY=<the-user's-Ollama-API-key>
+```
+
+Ollama's model catalog changes over time, so do not hard-code a retired model
+from an old example. A local Ollama instance is also supported, but it must be
+reachable from the deployed AppServer; `127.0.0.1` on Railway means the
+Railway container, not the user's Mac.
 
 ## Optional Discord
 
