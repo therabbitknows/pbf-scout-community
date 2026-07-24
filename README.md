@@ -9,6 +9,11 @@ This repository is the community edition. It contains no access to the PBF
 Scout hosted service, private storefronts, private Discord channels, private
 datasets, provider credentials, or operator infrastructure.
 
+The Rabbit R1 companion is maintained separately in the private
+[`pbf-scout-rabbit-creation`](https://github.com/therabbitknows/pbf-scout-rabbit-creation)
+repository. This AppServer does not contain the Creation UI or Rabbit-specific
+deployment artifacts.
+
 ## What Works
 
 - `Scout this card` performs one explicit Mentra camera capture.
