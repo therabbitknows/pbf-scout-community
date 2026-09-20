@@ -13,8 +13,10 @@ connectors, no private fallback, and no authority over the R1 client, OddCor,
 or a private gateway.
 
 Private GitHub repositories remain canonical for private operations. NotebookLM
-is derivative and operator-gated; never combine this public repository with a
-private source, enable automatic sync, or treat generated summaries as operating
+is derivative and operator-gated, and may use only product-specific, redacted,
+operator-approved snapshots tied to immutable Git revisions and complete
+manifests with checksums. Never combine this public repository with a private
+source, enable automatic sync, or treat generated summaries as operating
 authority. GitBook is historical and non-operational. Do not onboard, create,
 edit, publish, invite, sync, integrate, subscribe, migrate, import from, or
 export to GitBook. Existing private GitBook material must remain private and
