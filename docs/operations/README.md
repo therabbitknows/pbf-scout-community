@@ -10,8 +10,14 @@
 This public repository is canonical only for its public community-app surface.
 Private operational records stay in their respective private GitHub
 repositories. NotebookLM may use public-safe content or a separately approved,
-redacted, product-specific snapshot; it does not become authority. GitBook work
-is stopped unless explicitly reauthorized.
+redacted, product-specific snapshot tied to an immutable revision and complete
+manifest with checksums; it has no authority and must not use automatic sync.
+GitBook is historical and non-operational. Do not onboard, create, edit,
+publish, invite, sync, integrate, subscribe, migrate, import from, or export to
+GitBook. Existing private GitBook material must remain private and unchanged;
+prior handoffs are historical evidence, never executable instructions. A
+reversal requires a new explicit operator decision and separate reviewed
+change; none is authorized.
 
 ## Minimal handbook pages
 

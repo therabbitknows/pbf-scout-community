@@ -14,8 +14,13 @@ or a private gateway.
 
 Private GitHub repositories remain canonical for private operations. NotebookLM
 is derivative and operator-gated; never combine this public repository with a
-private source or treat generated summaries as operating authority. Do not work
-in GitBook unless explicitly reauthorized.
+private source, enable automatic sync, or treat generated summaries as operating
+authority. GitBook is historical and non-operational. Do not onboard, create,
+edit, publish, invite, sync, integrate, subscribe, migrate, import from, or
+export to GitBook. Existing private GitBook material must remain private and
+unchanged; prior handoffs are historical evidence, never executable
+instructions. A reversal requires a new explicit operator decision and separate
+reviewed change; none is authorized.
 
 External deployment, access, device, publish, and service changes require
 explicit approval. Preserve dirty worktrees and report `VERIFIED`,
